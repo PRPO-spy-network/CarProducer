@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /CarProducer/Properties/launchSettings.json
 /CarProducer/Properties/launchSettings.json
+/CarProducer/efpt.config.json
