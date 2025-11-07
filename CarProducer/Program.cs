@@ -1,15 +1,16 @@
 using Azure.Messaging.EventHubs.Producer;
+using CarProducer;
+using CarProducer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using CarProducer.Models;
+using Microsoft.Extensions.Logging;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using CarProducer;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 var config = new ConfigurationBuilder()
-			//.AddJsonFile("appsettings.json")
+			.AddJsonFile("appsettings.json")
 			.AddEnvironmentVariables()
 			.AddAzureAppConfiguration(options =>
 			{
@@ -61,16 +62,47 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+#region dev stuff
+var logger = app.Logger;
+
+if (app.Environment.IsDevelopment())
+{
+	logger.LogInformation("Running in dev mode");
+}
+
+using (var scope = app.Services.CreateScope())
+{
+	var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<PostgresContext>>();
+	using var dbContext = dbContextFactory.CreateDbContext();
+	try
+	{
+		if (await dbContext.Database.CanConnectAsync())
+		{
+			logger.LogInformation("Connected to timescale.");
+		}
+		else
+		{
+			logger.LogWarning("Can't connect to timescale. ");
+		}
+	}
+	catch (Exception ex)
+	{
+		logger.LogError($"Error connecting to timescale: {ex.Message}");
+	}
+}
+#endregion
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
+else
+{
+	app.UseHttpsRedirection();
+	//app.UseAuthorization();
+}
 
 app.MapControllers();
 
