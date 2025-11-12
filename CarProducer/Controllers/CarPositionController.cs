@@ -12,7 +12,7 @@ using System.Text;
 namespace CarProducer.Controllers
 {
     [ApiController]
-    [Route("/api/[controller]")]
+    [Route("/location")]
     public class CarPositionController : ControllerBase
     {
         private readonly ILogger<CarPositionController> _logger;
