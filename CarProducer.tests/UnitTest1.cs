@@ -4,6 +4,7 @@ using CarProducer.Controllers;
 using CarProducer.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.EntityFrameworkCore;
@@ -54,11 +55,14 @@ namespace CarProducer.tests
 			_dbContextFactoryMock.Setup(f => f.CreateDbContext())
 							   .Returns(_dbContextMock.Object);
 
+			var mockConfig = new Mock<IConfiguration>();
+
 			var _controller = new CarPositionController(
 				_loggerMock.Object,
 				_dbContextFactoryMock.Object,
 				_eventHubProducers,
-				_regionLookup
+				_regionLookup,
+				mockConfig.Object
 			);
 
 			// Arrange
