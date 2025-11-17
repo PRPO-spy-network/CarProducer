@@ -22,7 +22,7 @@ public partial class PostgresContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
-            .HasPostgresEnum("regiont", new[] { "OTHER", "EU" })
+        //    .HasPostgresEnum("regiont", new[] { "OTHER", "EU" })
             .HasPostgresExtension("timescaledb");
 
         modelBuilder.Entity<CarGpsData>(entity =>
@@ -50,7 +50,7 @@ public partial class PostgresContext : DbContext
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Region)
-                .HasMaxLength(3)
+                .HasMaxLength(8)
                 .IsFixedLength()
                 .HasColumnName("region");
         });

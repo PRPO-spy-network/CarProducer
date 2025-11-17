@@ -19,16 +19,19 @@ namespace CarProducer.Controllers
 		private readonly Dictionary<string, Hub> _eventHubProducers;
 		private readonly IDbContextFactory<PostgresContext> _dbContextFactory;
 		private readonly Dictionary<int, string> _regionLookup;
+		private readonly IConfiguration _config;
 		public CarPositionController(
 			ILogger<CarPositionController> logger, 
-			IDbContextFactory<PostgresContext> dbContextFactory, 
+			IDbContextFactory<PostgresContext> dbContextFactory,
 			Dictionary<string, Hub> eventHubProducers,
-			Dictionary<int, string> regionLookup)
-        {
-            _logger = logger;
+			Dictionary<int, string> regionLookup,
+			IConfiguration config)
+		{
+			_logger = logger;
 			_eventHubProducers = eventHubProducers;
 			_dbContextFactory = dbContextFactory;
 			_regionLookup = regionLookup;
+			_config = config;
 		}
 
 		[HttpPost]
@@ -76,7 +79,7 @@ namespace CarProducer.Controllers
 
 				if(producer == null)
 				{
-					producer = _eventHubProducers["OTHER"].Producer;
+					producer = _eventHubProducers[_config["DefaultHubName"]!].Producer;
 				}
 
 				using EventDataBatch batch = await producer.CreateBatchAsync();

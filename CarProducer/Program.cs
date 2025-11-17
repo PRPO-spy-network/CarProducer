@@ -52,6 +52,7 @@ builder.Services.AddSingleton(regionLookup);
 
 
 builder.Services.AddSingleton(eventHubs);
+builder.Services.AddSingleton(config);
 
 // Add services to the container.
 
