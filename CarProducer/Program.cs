@@ -61,7 +61,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+	.AddNpgSql(config["TIMESCALE_CONN_STRING"], name: "timescale");
+
 var app = builder.Build();
 
 app.MapHealthChecks("/health");
