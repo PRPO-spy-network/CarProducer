@@ -1,5 +1,6 @@
 using Azure.Messaging.EventHubs.Producer;
 using CarProducer;
+using CarProducer.DAO;
 using CarProducer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -31,28 +32,14 @@ foreach (var cfg in eventHubsConf)
 }
 #endregion
 
-#region Timescale
-string timeScaleConnectionString = config["TIMESCALE_CONN_STRING"]??throw new InvalidDataException("TIMESCALE_CONN_STRING ne obstaja");
-builder.Services.AddDbContextFactory<PostgresContext>(options => options.UseNpgsql(timeScaleConnectionString));
-
-
-var optionsBuilder = new DbContextOptionsBuilder<PostgresContext>();
-optionsBuilder.UseNpgsql(timeScaleConnectionString);
-
-
-Dictionary<int, string> regionLookup;
-using (var context = new PostgresContext(optionsBuilder.Options))
-{
-	regionLookup = context.LookupRegistrations
-		.ToDictionary(r => r.Id, r => r.Region);
-}
-builder.Services.AddSingleton(regionLookup);
-#endregion
-
-
 
 builder.Services.AddSingleton(eventHubs);
 builder.Services.AddSingleton(config);
+
+builder.Services.AddSingleton<IRegions, RegionsApi>();
+builder.Services.AddHttpClient<IRegions, RegionsApi>()
+				.SetHandlerLifetime(Timeout.InfiniteTimeSpan);
+
 
 // Add services to the container.
 
@@ -60,9 +47,6 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-builder.Services.AddHealthChecks()
-	.AddNpgSql(config["TIMESCALE_CONN_STRING"], name: "timescale");
 
 var app = builder.Build();
 
@@ -73,27 +57,6 @@ var logger = app.Logger;
 if (app.Environment.IsDevelopment())
 {
 	logger.LogInformation("Running in dev mode");
-}
-
-using (var scope = app.Services.CreateScope())
-{
-	var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<PostgresContext>>();
-	using var dbContext = dbContextFactory.CreateDbContext();
-	try
-	{
-		if (await dbContext.Database.CanConnectAsync())
-		{
-			logger.LogInformation("Connected to timescale.");
-		}
-		else
-		{
-			logger.LogWarning("Can't connect to timescale. ");
-		}
-	}
-	catch (Exception ex)
-	{
-		logger.LogError($"Error connecting to timescale: {ex.Message}");
-	}
 }
 #endregion
 

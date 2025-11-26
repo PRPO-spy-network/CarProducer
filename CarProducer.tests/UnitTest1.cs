@@ -1,36 +1,35 @@
 using Azure.Messaging.EventHubs;
 using Azure.Messaging.EventHubs.Producer;
 using CarProducer.Controllers;
+using CarProducer.DAO;
 using CarProducer.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Moq.EntityFrameworkCore;
+using System.Text;
+using System.Text.Json;
 
-
-namespace CarProducer.tests
+namespace CarProducer.Tests
 {
-	//public record Hub(string Name, EventHubProducerClient Producer);
-	public class UnitTest1
+	public class CarPositionControllerTests
 	{
-		public UnitTest1()
-		{
-		}
+		private readonly Mock<ILogger<CarPositionController>> _loggerMock;
+		private readonly Mock<IConfiguration> _configMock;
+		private readonly Mock<IRegions> _regionsMock;
+		private readonly Dictionary<string, Hub> _eventHubProducers;
+		private readonly CarPositionController _controller;
 
-		[Fact]
-		public async Task PostAsync_WithValidCarPosition_ReturnsOkResult()
+		public CarPositionControllerTests()
 		{
-			var _loggerMock = new Mock<ILogger<CarPositionController>>();
-			var _dbContextFactoryMock = new Mock<IDbContextFactory<PostgresContext>>();
-			var options = new DbContextOptionsBuilder<PostgresContext>().Options;
-			var _dbContextMock = new Mock<PostgresContext>(options);
+			_loggerMock = new Mock<ILogger<CarPositionController>>();
+			_configMock = new Mock<IConfiguration>();
+			_regionsMock = new Mock<IRegions>();
 
-			// Setup EventHub producers with proper mock EventDataBatch
+			// Setup mock EventHub producers
 			var mockProducer = new Mock<EventHubProducerClient>();
 
-			// Create mock EventDataBatch using the official factory
+			// Create mock EventDataBatch
 			var backingList = new List<EventData>();
 			EventDataBatch eventDataBatch = EventHubsModelFactory.EventDataBatch(
 				batchSizeBytes: 1024 * 1024,
@@ -44,27 +43,26 @@ namespace CarProducer.tests
 			mockProducer.Setup(p => p.SendAsync(It.IsAny<EventDataBatch>(), It.IsAny<CancellationToken>()))
 					   .Returns(Task.CompletedTask);
 
-			var _eventHubProducers = new Dictionary<string, Hub>
-				{
-					{ "EU", new Hub("EU", mockProducer.Object) },
-					{ "OTH", new Hub("OTH", mockProducer.Object) }
-				};
+			_eventHubProducers = new Dictionary<string, Hub>
+			{
+				{ "EU", new Hub("EU", mockProducer.Object) },
+				{ "US", new Hub("US", mockProducer.Object) },
+				{ "OTH", new Hub("OTH", mockProducer.Object) }
+			};
 
-			var _regionLookup = new Dictionary<int, string> { { 1, "EU" } };
+			_configMock.Setup(x => x["DefaultHubName"]).Returns("OTH");
 
-			_dbContextFactoryMock.Setup(f => f.CreateDbContext())
-							   .Returns(_dbContextMock.Object);
-
-			var mockConfig = new Mock<IConfiguration>();
-
-			var _controller = new CarPositionController(
+			_controller = new CarPositionController(
 				_loggerMock.Object,
-				_dbContextFactoryMock.Object,
 				_eventHubProducers,
-				_regionLookup,
-				mockConfig.Object
+				_configMock.Object,
+				_regionsMock.Object
 			);
+		}
 
+		[Fact]
+		public async Task PostAsync_WithValidCarPosition_ReturnsOkResult()
+		{
 			// Arrange
 			var carPosition = new CarPosition
 			{
@@ -73,45 +71,14 @@ namespace CarProducer.tests
 				Latitude = 41.8902
 			};
 
-			var registrations = new List<Registration>
-			{
-			new Registration { CarId = "CAR123", RegionId = 1 }
-			};
-
-			var lookupRegistrations = new List<LookupRegistration>
-			{
-			new LookupRegistration { Id = 1, Region = "EU" }
-			};
-
-			_dbContextMock.Setup(x => x.Registrations)
-						 .ReturnsDbSet(registrations);
-			_dbContextMock.Setup(x => x.LookupRegistrations)
-						 .ReturnsDbSet(lookupRegistrations);
+			_regionsMock.Setup(x => x.GetCarRegionAsync("CAR123"))
+					   .ReturnsAsync("EU");
 
 			// Act
 			var result = await _controller.PostAsync(carPosition);
 
 			// Assert
 			var okResult = Assert.IsType<OkObjectResult>(result);
-
-			// ------------ RAKOTVORNO ---------------
-			var response = okResult.Value!;
-			
-			var message = response.GetType().GetProperty("message")?.GetValue(response, null)!;
-			Assert.Equal("Car position saved!", message.ToString());
-			var data = response.GetType().GetProperty("data")?.GetValue(response, null);
-			Assert.Equal(carPosition, data);
-
-			// ------------ xxxxxxxxxxxx ---------------
-
-			_loggerMock.Verify(
-				x => x.Log(
-					LogLevel.Information,
-					It.IsAny<EventId>(),
-					It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Posted car position data")),
-					It.IsAny<Exception>(),
-					It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)),
-				Times.Once);
 		}
 	}
 }

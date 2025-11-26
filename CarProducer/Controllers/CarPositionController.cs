@@ -1,5 +1,6 @@
 using Azure.Messaging.EventHubs;
 using Azure.Messaging.EventHubs.Producer;
+using CarProducer.DAO;
 using CarProducer.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Amqp.Framing;
@@ -17,21 +18,18 @@ namespace CarProducer.Controllers
     {
         private readonly ILogger<CarPositionController> _logger;
 		private readonly Dictionary<string, Hub> _eventHubProducers;
-		private readonly IDbContextFactory<PostgresContext> _dbContextFactory;
-		private readonly Dictionary<int, string> _regionLookup;
 		private readonly IConfiguration _config;
+		private readonly IRegions _regions;
 		public CarPositionController(
 			ILogger<CarPositionController> logger, 
-			IDbContextFactory<PostgresContext> dbContextFactory,
 			Dictionary<string, Hub> eventHubProducers,
-			Dictionary<int, string> regionLookup,
-			IConfiguration config)
+			IConfiguration config,
+			IRegions regions)
 		{
 			_logger = logger;
 			_eventHubProducers = eventHubProducers;
-			_dbContextFactory = dbContextFactory;
-			_regionLookup = regionLookup;
 			_config = config;
+			_regions = regions;
 		}
 
 		[HttpPost]
@@ -41,22 +39,21 @@ namespace CarProducer.Controllers
 			double carLongitude = data.Longitude;
 			double carLatitude = data.Latitude;
 
-			string? region;
-			using (var dbContext = _dbContextFactory.CreateDbContext())
+			string? region = null;
+			try
 			{
-				region = (from r in dbContext.Registrations
-						  join rl in dbContext.LookupRegistrations on r.RegionId equals rl.Id
-						  where r.CarId == carId
-						  select rl.Region)
-				 .FirstOrDefault();
-
-
-				if (region == null)
-				{
-					return Unauthorized(new { message = "The car is unregistered", data });
-				}
+				region = await _regions.GetCarRegionAsync(carId);
 			}
-		
+			catch{
+				return StatusCode(500);
+			}
+
+			if (region == null)
+			{
+				return Unauthorized(new { message = "The car is unregistered", data });
+			}
+			
+			
 			try
             {
 				DateTime nowUtc = DateTime.UtcNow;
@@ -87,10 +84,10 @@ namespace CarProducer.Controllers
 				await producer.SendAsync(batch);
 
 				_logger.LogInformation("Posted car position data");
-			} catch
-            {
-				return StatusCode(500);
-			}
+
+				}catch{
+					return StatusCode(500);
+				}
 
 			return Ok(new { message = "Car position saved!", data});
 		}
