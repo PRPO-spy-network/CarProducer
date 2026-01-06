@@ -12,7 +12,10 @@ using System.Text;
 
 namespace CarProducer.Controllers
 {
-    [ApiController]
+	/// <summary>
+	/// Handles car location updates and sends them to Event Hub.
+	/// </summary>
+	[ApiController]
     [Route("/location")]
     public class CarPositionController : ControllerBase
     {
@@ -32,6 +35,13 @@ namespace CarProducer.Controllers
 			_regions = regions;
 		}
 
+		/// <summary>
+		/// Send car's geographical location
+		/// </summary>
+		/// <param name="data">Car position payload containing car ID and coordinates.</param>
+		/// <response code="200">Position processed successfully</response>
+		/// <response code="401">Car is not registered</response>
+		/// <response code="500">Internal server error</response>
 		[HttpPost]
 		public async Task<IActionResult> PostAsync([FromBody] CarPosition data)
         {
