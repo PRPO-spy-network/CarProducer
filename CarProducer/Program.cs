@@ -5,6 +5,7 @@ using CarProducer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 
@@ -49,6 +50,13 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
+	c.SwaggerDoc("v1", new OpenApiInfo
+	{
+		Title = "Car Producer API",
+		Version = "v1",
+		Description = "API to manage car locations and send updates to Event Hubs. It supports registering car positions by region and forwarding them to Event Hubs.",
+	});
+
 	var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
 	var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
 
