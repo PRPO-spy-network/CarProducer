@@ -15,6 +15,18 @@ namespace CarProducer.Controllers
 	/// <summary>
 	/// Handles car location updates and sends them to Event Hub.
 	/// </summary>
+	/// <remarks>
+	/// This controller receives car GPS data via POST requests and forwards it to the appropriate Event Hub
+	/// based on the car's region. If the car is unregistered, it returns a 401 status.
+	/// </remarks>
+	/// <example>
+	/// POST /location
+	/// {
+	///     "carId": "CAR123",
+	///     "longitude": 12.34,
+	///     "latitude": 56.78
+	/// }
+	/// </example>
 	[ApiController]
     [Route("/location")]
     public class CarPositionController : ControllerBase
@@ -38,6 +50,10 @@ namespace CarProducer.Controllers
 		/// <summary>
 		/// Send car's geographical location
 		/// </summary>
+		/// <remarks>
+		/// This endpoint accepts a CarPosition object and forwards it to Event Hub. 
+		/// It will return 401 if the car is not registered or 500 on internal errors.
+		/// </remarks>
 		/// <param name="data">Car position payload containing car ID and coordinates.</param>
 		/// <response code="200">Position processed successfully</response>
 		/// <response code="401">Car is not registered</response>
